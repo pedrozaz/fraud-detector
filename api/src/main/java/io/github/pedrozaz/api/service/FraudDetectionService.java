@@ -5,6 +5,8 @@ import io.github.pedrozaz.api.dto.MLRequest;
 import io.github.pedrozaz.api.dto.MLResponse;
 import io.github.pedrozaz.api.dto.TransactionRequest;
 import io.github.pedrozaz.api.model.StatusEnum;
+import io.github.pedrozaz.api.model.Transaction;
+import io.github.pedrozaz.api.repository.TransactionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,11 +21,14 @@ public class FraudDetectionService {
 
     private final RestTemplate restTemplate;
     private final String mlServiceUrl;
+    private final TransactionRepository transactionRepository;
 
     public FraudDetectionService(RestTemplate restTemplate,
-                                 @Value("${ml.service.url}") String mlServiceUrl) {
+                                 @Value("${ml.service.url}") String mlServiceUrl,
+                                 TransactionRepository transactionRepository) {
         this.restTemplate = restTemplate;
         this.mlServiceUrl = mlServiceUrl;
+        this.transactionRepository = transactionRepository;
     }
 
     public FraudCheckResponse checkTransaction(TransactionRequest request) {
@@ -37,27 +42,54 @@ public class FraudDetectionService {
         );
 
         MLResponse mlResponse;
+        StatusEnum status;
+
         try {
             log.info("Sending request to ML service at {}: {}", mlServiceUrl, mlRequest);
             mlResponse = restTemplate.postForObject(mlServiceUrl + "/predict", mlRequest, MLResponse.class);
 
             if (mlResponse == null) {
                 log.error("ML response is null response");
-                return createFallbackResponse(false, .0);
+                return saveTransaction(request, StatusEnum.REVIEW, false, .0);
             }
             log.info("Received ML Response: {}", mlResponse);
+            status = getStatus(mlResponse);
+
         } catch (RestClientException e) {
             log.error("Error calling ML service: {}", e.getMessage());
-            return createFallbackResponse(true, .99);
+            return saveTransaction(request, StatusEnum.REVIEW, false, .0);
         }
 
-        StatusEnum status = getStatus(mlResponse);
-
-        return new FraudCheckResponse(
-                UUID.randomUUID().toString(),
+        return saveTransaction(
+                request,
                 status,
                 mlResponse.isFraud(),
                 mlResponse.fraudScore()
+        );
+    }
+
+    private FraudCheckResponse saveTransaction(TransactionRequest request, StatusEnum status, boolean isFraud, double score) {
+        Transaction transaction = new Transaction();
+        transaction.setTransactionId(UUID.randomUUID().toString());
+        transaction.setUserId(request.userId());
+        transaction.setAmount(request.amount());
+        transaction.setCurrency(request.currency());
+        transaction.setTimestamp(request.timestamp());
+        transaction.setCardId(request.cardId());
+        transaction.setMerchantId(request.merchantId());
+
+        transaction.setFraud(isFraud);
+        transaction.setFraudScore(score);
+        transaction.setStatus(status);
+
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        log.info("Saved transaction with ID: {}", savedTransaction.getTransactionId());
+
+        return new FraudCheckResponse(
+                savedTransaction.getTransactionId(),
+                savedTransaction.getStatus(),
+                savedTransaction.isFraud(),
+                savedTransaction.getFraudScore()
         );
     }
 
@@ -69,15 +101,5 @@ public class FraudDetectionService {
             return StatusEnum.REVIEW;
         }
         return StatusEnum.APPROVED;
-    }
-
-    private FraudCheckResponse createFallbackResponse(boolean isFraud, double score) {
-        StatusEnum status = isFraud ? StatusEnum.REJECTED : StatusEnum.APPROVED;
-        return new FraudCheckResponse(
-                UUID.randomUUID().toString(),
-                status,
-                isFraud,
-                score
-        );
     }
 }
