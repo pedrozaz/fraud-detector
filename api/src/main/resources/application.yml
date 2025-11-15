@@ -2,8 +2,23 @@ spring:
   application:
     name: fraud-detector-api
 
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fraud_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
 application:
   security:
     jwt:
       expiraton: 86400000
-      secret: "413F4428472B4B6250655368566D5970337336763979244226452948404D6351"
+      secret-key: ${APPLICATION_SECRET_KEY:413F4428472B4B6250655368566D5970337336763979244226452948404D6351}
