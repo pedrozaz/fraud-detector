@@ -32,8 +32,9 @@ public class FraudDetectionService {
     }
 
     public FraudCheckResponse checkTransaction(TransactionRequest request) {
+
         int txHour = request.timestamp().getHour();
-        int deviceScore = 75;
+        int deviceScore = request.deviceScore();
 
         MLRequest mlRequest = new MLRequest(
                 request.amount().doubleValue(),
@@ -77,6 +78,7 @@ public class FraudDetectionService {
         transaction.setTimestamp(request.timestamp());
         transaction.setCardId(request.cardId());
         transaction.setMerchantId(request.merchantId());
+        transaction.setDeviceScore(request.deviceScore());
 
         transaction.setFraud(isFraud);
         transaction.setFraudScore(score);

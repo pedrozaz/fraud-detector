@@ -9,6 +9,7 @@ public record TransactionRequest(
         String currency,
         String merchantId,
         LocalDateTime timestamp,
-        String cardId
+        String cardId,
+        int deviceScore
 ) {
 }

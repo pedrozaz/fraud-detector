@@ -31,6 +31,8 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
+    private Integer deviceScore;
+
     @Column(nullable = false)
     private boolean isFraud;
 
