@@ -2,4 +2,7 @@ spring:
   application:
     name: fraud-detector-api
 
-
+application:
+  security:
+    jwt:
+      expiraton: 86400000
