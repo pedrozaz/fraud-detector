@@ -1,6 +1,5 @@
 package io.github.pedrozaz.api.config;
 
-import io.github.pedrozaz.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
